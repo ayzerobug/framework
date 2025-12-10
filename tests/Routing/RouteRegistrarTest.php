@@ -127,6 +127,23 @@ class RouteRegistrarTest extends TestCase
         $this->assertSame(['one', 'two'], $this->getRoute()->middleware());
     }
 
+    public function testMiddlewareAsNull()
+    {
+        $this->router->middleware(null)->get('users', function () {
+            return 'all-users';
+        });
+
+        $this->seeResponse('all-users', Request::create('users', 'GET'));
+        $this->assertSame([], $this->getRoute()->middleware());
+
+        $this->router->get('users', function () {
+            return 'all-users';
+        })->middleware(null);
+
+        $this->seeResponse('all-users', Request::create('users', 'GET'));
+        $this->assertSame([], $this->getRoute()->middleware());
+    }
+
     public function testWithoutMiddlewareRegistration()
     {
         $this->router->middleware(['one', 'two'])->get('users', function () {
@@ -907,6 +924,29 @@ class RouteRegistrarTest extends TestCase
         });
 
         $this->seeMiddleware('can:test');
+    }
+
+    public function testCanSetMiddlewareCanWithModelsOnGroups()
+    {
+        $this->router->can('view', 'post')->group(function ($router) {
+            $router->get('/post/{post}');
+        });
+
+        $this->seeMiddleware('can:view,post');
+    }
+
+    public function testCanSetMiddlewareCanNestedOnGroups()
+    {
+        $this->router->can('access-admin')->group(function ($router) {
+            $router->can('edit', 'post')->group(function ($router) {
+                $router->get('/post/{post}/edit');
+            });
+        });
+
+        $this->assertEquals([
+            'can:access-admin',
+            'can:edit,post',
+        ], $this->getRoute()->middleware());
     }
 
     public function testCanSetMiddlewareForSpecifiedMethodsOnRegisteredResource()
